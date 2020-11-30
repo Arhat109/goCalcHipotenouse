@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	dch "github.com/calcHypotenuse/doubleChan"
+	dch "github.com/Arhat109/calcHypotenuse/doubleChan"
 	"math"
 	"sync"
 )
