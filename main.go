@@ -1,4 +1,5 @@
 package main
+
 /**
  * Постановка задачи: вычислить гипотенузу прямоугольного треугольника, согласно формуле Hyp = SQRT(a*a + b*b)
  * Исходные данные взять из входного потока STDIN, результат вывести в выходной поток STDOUT.
@@ -29,8 +30,8 @@ package main
  * @author fvn20201125..20201127(NT)
  */
 import (
-	calc "calcHypotenuse/calcService"
 	"fmt"
+	calc "github.com/calcHypotenuse/calcService"
 	"time"
 )
 
@@ -39,15 +40,15 @@ func main() {
 	for {
 		fmt.Printf("\nЗадайте кол-во сервисов:")
 		cnt, err := fmt.Scanf("%d\n", &num)
-		if err == nil && cnt == 1 && num > 0 { break }
+		if err == nil && cnt == 1 && num > 0 {
+			break
+		}
 
 		fmt.Printf("\ncnt=%d, err=%s, num=%d", cnt, err, num)
 		fmt.Printf("\nНе, так не пойдет .. надо целое, больше нуля и желательно не шибко много.. повторная попытка")
 	}
 	err := calc.CalcFabric(num)
- 	time.Sleep(20_000_000_000) // это 20сек в НАНОсекундах .. :) многозадачность КООПЕРАТИВНАЯ!
+	time.Sleep(20_000_000_000) // это 20сек в НАНОсекундах .. :) многозадачность КООПЕРАТИВНАЯ!
 
 	fmt.Printf("\nmain(): А у меня фсё.. err=%s", err)
 }
-
-

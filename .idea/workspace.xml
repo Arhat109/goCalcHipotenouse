@@ -1,14 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="BranchesTreeState">
+    <expand>
+      <path>
+        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="LOCAL_ROOT" type="e8cecc67:BranchNodeDescriptor" />
+      </path>
+    </expand>
+    <select />
+  </component>
   <component name="ChangeListManager">
-    <list default="true" id="d04d0f04-70f6-436f-977f-4796a245f813" name="Default Changelist" comment="" />
+    <list default="true" id="238a1b2e-ffcc-440b-9245-705f06b1de64" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/calcService/calcService.go" beforeDir="false" afterPath="$PROJECT_DIR$/calcService/calcService.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/main.go" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="GOROOT" path="$USER_HOME$/progs/go" />
-  <component name="ProjectId" id="1kmIKDidQwSMTU5LCRVy9j9O5Lg" />
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectId" id="1l0eMK63WjBkOFt1qvRNw1Keato" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
@@ -18,76 +35,21 @@
     <property name="WebServerToolWindowFactoryState" value="false" />
     <property name="go.import.settings.migrated" value="true" />
     <property name="last_opened_file_path" value="$USER_HOME$" />
-    <property name="node.js.detected.package.eslint" value="true" />
-    <property name="node.js.detected.package.tslint" value="true" />
-    <property name="node.js.path.for.package.eslint" value="project" />
-    <property name="node.js.path.for.package.tslint" value="project" />
-    <property name="node.js.selected.package.eslint" value="(autodetect)" />
-    <property name="node.js.selected.package.tslint" value="(autodetect)" />
     <property name="settings.editor.selected.configurable" value="preferences.lookFeel" />
-  </component>
-  <component name="RunManager" selected="Go Build.go build main.go">
-    <configuration name="go build calcService.go" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
-      <module name="calcHypotenuse" />
-      <working_directory value="$PROJECT_DIR$" />
-      <kind value="FILE" />
-      <filePath value="$PROJECT_DIR$/calcService/calcService.go" />
-      <package value="calcHypotenuse" />
-      <directory value="$PROJECT_DIR$" />
-      <option name="run" value="false" />
-      <method v="2" />
-    </configuration>
-    <configuration name="go build doubleChan.go" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
-      <module name="calcHypotenuse" />
-      <working_directory value="$PROJECT_DIR$" />
-      <kind value="FILE" />
-      <filePath value="$PROJECT_DIR$/doubleChan/doubleChan.go" />
-      <package value="calcHypotenuse" />
-      <directory value="$PROJECT_DIR$" />
-      <option name="run" value="false" />
-      <method v="2" />
-    </configuration>
-    <configuration name="go build main.go" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
-      <module name="calcHypotenuse" />
-      <working_directory value="$PROJECT_DIR$" />
-      <kind value="FILE" />
-      <filePath value="$PROJECT_DIR$/main.go" />
-      <package value="calcHypotenuse" />
-      <directory value="$PROJECT_DIR$" />
-      <method v="2" />
-    </configuration>
-    <recent_temporary>
-      <list>
-        <item itemvalue="Go Build.go build main.go" />
-        <item itemvalue="Go Build.go build calcService.go" />
-        <item itemvalue="Go Build.go build doubleChan.go" />
-      </list>
-    </recent_temporary>
   </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
   </component>
-  <component name="WindowStateProjectService">
-    <state width="1554" height="209" key="GridCell.Tab.0.bottom" timestamp="1606463774283">
-      <screen x="0" y="28" width="1600" height="844" />
-    </state>
-    <state width="1554" height="209" key="GridCell.Tab.0.bottom/0.28.1600.844@0.28.1600.844" timestamp="1606463774283" />
-    <state width="1554" height="209" key="GridCell.Tab.0.center" timestamp="1606463774282">
-      <screen x="0" y="28" width="1600" height="844" />
-    </state>
-    <state width="1554" height="209" key="GridCell.Tab.0.center/0.28.1600.844@0.28.1600.844" timestamp="1606463774282" />
-    <state width="1554" height="209" key="GridCell.Tab.0.left" timestamp="1606463774282">
-      <screen x="0" y="28" width="1600" height="844" />
-    </state>
-    <state width="1554" height="209" key="GridCell.Tab.0.left/0.28.1600.844@0.28.1600.844" timestamp="1606463774282" />
-    <state width="1554" height="209" key="GridCell.Tab.0.right" timestamp="1606463774283">
-      <screen x="0" y="28" width="1600" height="844" />
-    </state>
-    <state width="1554" height="209" key="GridCell.Tab.0.right/0.28.1600.844@0.28.1600.844" timestamp="1606463774283" />
-    <state x="632" y="209" width="327" height="481" key="refactoring.ChangeSignatureDialog" timestamp="1606302710429">
-      <screen x="0" y="28" width="1600" height="844" />
-    </state>
-    <state x="632" y="209" width="327" height="481" key="refactoring.ChangeSignatureDialog/0.28.1600.844@0.28.1600.844" timestamp="1606302710429" />
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
   </component>
 </project>
