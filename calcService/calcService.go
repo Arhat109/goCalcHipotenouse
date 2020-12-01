@@ -3,7 +3,7 @@ package calcService
 import (
 	"context"
 	"fmt"
-	dch "github.com/Arhat109/calcHypotenuse/doubleChan"
+	dch "github.com/Arhat109/goCalcHypotenuse/doubleChan"
 	"sync"
 )
 

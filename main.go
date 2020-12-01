@@ -31,7 +31,7 @@ package main
  */
 import (
 	"fmt"
-	calc "github.com/Arhat109/calcHypotenuse/calcService"
+	calc "github.com/Arhat109/goCalcHypotenuse/calcService"
 	"time"
 )
 
