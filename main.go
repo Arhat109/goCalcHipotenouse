@@ -41,14 +41,16 @@ func main() {
 		fmt.Printf("\nЗадайте кол-во сервисов:")
 		cnt, err := fmt.Scanf("%d\n", &num)
 		if err == nil && cnt == 1 && num > 0 {
+			fmt.Printf("Ok.\n")
 			break
 		}
 
 		fmt.Printf("\ncnt=%d, err=%s, num=%d", cnt, err, num)
 		fmt.Printf("\nНе, так не пойдет .. надо целое, больше нуля и желательно не шибко много.. повторная попытка")
 	}
-	err := calc.CalcFabric(num)
+	err := calc.CalcFabric(num, "float64")
 	time.Sleep(20_000_000_000) // это 20сек в НАНОсекундах .. :) многозадачность КООПЕРАТИВНАЯ!
 
+	//	fmt.Printf("\nmain(): А у меня фсё.. ")
 	fmt.Printf("\nmain(): А у меня фсё.. err=%s", err)
 }

@@ -7,60 +7,69 @@ import (
 	"sync"
 )
 
-type IDEntry = interface{} // any type may be in/out channel!
+//
+// Тип для канальных сообщений попарного чтения/записи.
+// Первичное назначение - вычисление гипотенуз треугольников тип в канале float64
+// @see calcService/calcFloat64 - реализация интерфейса
+//
+type IDEntry = interface {
+	Get() ([2]interface{}, error)
+	Square(interface{}) (interface{}, error)
+	Add(interface{}, interface{}) (interface{}, error)
+	Sqrt(interface{}) (interface{}, error)
+}
 
 // Интерфейс блокирующегося канала для парного чтения/записи данных
 type IDChannel interface {
-	ReadPair() ([2]IDEntry, error)
-	WritePair( [2]IDEntry ) error
+	ReadPair(ctx context.Context) (interface{}, interface{}, error)
+	WritePair(ctx context.Context, val1 interface{}, val2 interface{}) error
 }
 
-// 1. Тип для парных операций в каналах с захватом
+// Реализация блокирующегося канала: Тип для парных операций в каналах с захватом
 type DChannel struct {
-	Dch chan IDEntry      `dch:"channel for twice push/pull operations"`
-	M   sync.Mutex        `mutex:"(un)lock channel for twice operations"`
-	Ctx context.Context   `ctx:"canceled context"`
+	Dch chan interface{} // "channel for twice push/pull operations"`
+	M   sync.Mutex       // "(un)lock channel for twice operations"`
 }
 
-func (t *DChannel) ReadPair() ([2]IDEntry, error) {
-	var res[2] IDEntry
+func (t *DChannel) ReadPair(ctx context.Context) (interface{}, interface{}, error) {
+	var res [2]interface{}
 	var ok bool
 
 	fmt.Printf("\nReadPair() lock channel")
 	t.M.Lock()
+	defer t.M.Unlock()
 	for i := 0; i < 2; i++ {
 		fmt.Print("\nReadPair() wait select")
 		select {
-		case res[i],ok = <-t.Dch:
+		case res[i], ok = <-t.Dch:
 			if !ok {
 				fmt.Printf("\nReadPair() error have closed channel")
-				return [2]IDEntry{nil,nil}, errors.New("DChannel ERROR: Input channel is closed into pair read")
+				return nil, nil, errors.New("DChannel ERROR: Input channel is closed into pair read")
 			}
-		case <- t.Ctx.Done():
+		case <-ctx.Done():
 			fmt.Printf("\nReadPair() have Done()")
-			t.M.Unlock()
-			return [2]IDEntry{nil,nil}, t.Ctx.Err()
+			return nil, nil, ctx.Err()
 		}
 	}
-	t.M.Unlock()
 	fmt.Printf("\nReadPair() UN-lock channel")
-	return res, nil
+	return res[0], res[1], nil
 }
 
-func (t *DChannel) WritePair( data [2]IDEntry ) error {
+func (t *DChannel) WritePair(ctx context.Context, val1 interface{}, val2 interface{}) error {
+	var data = [2]interface{}{val1, val2}
+
 	fmt.Printf("\nWritePair() lock channel")
 	t.M.Lock()
+	defer t.M.Unlock()
 	for i := 0; i < 2; i++ {
 		fmt.Printf("\nWritePair wait select")
 		select {
 		case t.Dch <- data[i]:
-		case <-t.Ctx.Done():
+		case <-ctx.Done():
 			fmt.Printf("\nWritePair have Done()")
-			t.M.Unlock()
-			return t.Ctx.Err()
+			return ctx.Err()
 		}
 	}
-	t.M.Unlock()
 	fmt.Printf("\nWritePair() UN-lock channel")
 	return nil
 }

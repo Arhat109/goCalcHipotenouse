@@ -2,44 +2,77 @@ package calcService
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	dch "github.com/Arhat109/calcHypotenuse/doubleChan"
-	"math"
 	"sync"
 )
 
-// 10. interface for double channel data of any calculation types int, float, etc.
+// Интерфейс горутин для вычисления гипотенуз треугольников и всего подряд за три операции с каналами:
 type IDChanCalculator interface {
-	// Any, have calculation goroutines:
-	CalcSquare(num int, chIn, chOut *dch.DChannel) error
-	CalcAdd(num int, chIn *dch.DChannel, chOut *chan interface{}) error
-	CalcSqrt(num int, ctx context.Context, chIn, chOut *chan interface{}) error
+	// поставка данных в канал вычисления квадратов катетов из поставщика данных канального типа сообщений
+	CalcGet(ctx context.Context, num int, chOut *dch.DChannel) error
+	CalcSquare(ctx context.Context, num int, chIn, chOut *dch.DChannel) error
+	CalcAdd(ctx context.Context, num int, chIn *dch.DChannel, chOut *chan interface{}) error
+	CalcSqrt(ctx context.Context, num int, chIn *chan interface{}) error
 }
 
 // Реализация интерфейса калькулятора пока так
-type CalcService struct{}
+type CalcService struct {
+	entry dch.IDEntry
+}
 
-// 2: функция для горутины, возвращающая квадрат числа:
-func (t CalcService) CalcSquare(num int, chIn, chOut *dch.DChannel) error {
-	fmt.Printf(" +SQUARE_%d start", num)
+// 6: Поставщик данных из входного канала (stdin) в парные каналы по очереди. Получает список каналов
+func (t *CalcService) CalcGet(ctx context.Context, num int, chOut *dch.DChannel) error {
+	fmt.Printf("\nCalcService::Get_%d starting", num)
+
+	for {
+		fmt.Printf("\nCalcService::CalcGet(%d): get data from stdin", num)
+		pair, err := t.entry.Get()
+		if err != nil {
+			return err
+		} // ошибка чтения входного потока: пришла какая-то фигня.
+
+		if d, ok := pair[0].(int32); ok {
+			if int32(d) == 0 {
+				return nil
+			} // входной поток кончился, а нет больше ничего..
+		}
+		// тут имеем пару рабочих значений, посылаем их в канал:
+		fmt.Printf("\nCalcService::CalcGet(%d): send pair %v to channel", num, pair)
+		err = chOut.WritePair(ctx, pair[0], pair[1])
+		if err != nil {
+			fmt.Printf("\nCalcService::CalcGet(%d): Error from channel is:%s\n", num, err)
+			return err
+		}
+	}
+}
+
+// 2: функция для горутины, возвращающая квадрат числа парами:
+func (t CalcService) CalcSquare(ctx context.Context, num int, chIn, chOut *dch.DChannel) error {
+	fmt.Printf("\nCalcService: +SQUARE_%d start", num)
 	var err error // nil by default!
 LOOP:
 	for {
 		fmt.Printf("\nSQUARE_%d wait read pair", num)
-		pair, err := chIn.ReadPair()
+		// читаем пару сообщений из канала с блокировкой
+		val1, val2, err := chIn.ReadPair(ctx)
 		if err != nil {
 			break LOOP
 		}
 
-		for i := 0; i < 2; i++ {
-			pair[i], err = getSquareByType(pair[i])
-			if err != nil {
-				break LOOP
-			}
+		// считаем квадраты принятого как там канальный тип умеет:
+		val1, err = t.entry.Square(val1)
+		if err != nil {
+			break LOOP
+		}
+		val2, err = t.entry.Square(val2)
+		if err != nil {
+			break LOOP
 		}
 
-		err = chOut.WritePair(pair)
+		// и пишем в канал результат парой с блокировкой
+		fmt.Printf("\nSQUARE_%d wait pair writing", num)
+		err = chOut.WritePair(ctx, val1, val2)
 		if err != nil {
 			break LOOP
 		}
@@ -49,35 +82,46 @@ LOOP:
 	return err
 }
 
-// 2: горутина, возвращающая сумму пары канальных значений:
-func (t CalcService) CalcAdd(num int, chIn *dch.DChannel, chOut *chan interface{}) error {
-	fmt.Printf(" +ADD_%d start", num)
+// 2: функция для горутины, возвращающая в канал сумму пары канальных значений:
+func (t CalcService) CalcAdd(ctx context.Context, num int, chIn *dch.DChannel, chOut *chan interface{}) error {
+	fmt.Printf("\nCalcService:: +ADD_%d start", num)
 	var err error
 LOOP:
 	for {
 		fmt.Printf("\nADD_%d wait read pair", num)
-		pair, err := chIn.ReadPair()
+		// читаем пару из канала с блокировкой:
+		val1, val2, err := chIn.ReadPair(ctx)
 		if err != nil {
 			break LOOP
 		}
 
-		res, err := getSumByType(pair)
+		// считаем сумму как там канальный тип умеет:
+		res, err := t.entry.Add(val1, val2)
 		if err != nil {
 			break LOOP
 		}
 
-		*chOut <- res
+		// отправляем результат в обычный канал
+		fmt.Printf("\nADD_%d into select for sending", num)
+		select {
+		case *chOut <- res:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 		fmt.Printf("\nADD_%d send sum", num)
 	}
-	fmt.Printf("\nADD_%d read error is:%s", num, err)
+	fmt.Printf("\nADD_%d has error is:%s", num, err)
 	return err
 }
 
 // 2: горутина, возвращающая корень канального значения:
-func (t CalcService) CalcSqrt(num int, ctx context.Context, chIn *chan interface{}) error {
-	fmt.Printf(" +SQRT_%d start", num)
-	var op dch.IDEntry
-	var ok bool
+func (t CalcService) CalcSqrt(ctx context.Context, num int, chIn *chan interface{}) error {
+	fmt.Printf("\nCalcService: +SQRT_%d start", num)
+	var (
+		op  interface{}
+		ok  bool
+		err error
+	)
 LOOP:
 	for {
 		fmt.Printf("\nSQRT_%d: wait select", num)
@@ -87,203 +131,91 @@ LOOP:
 				break LOOP
 			}
 		case <-ctx.Done():
-			err := ctx.Err()
+			err = ctx.Err()
 			fmt.Printf("\nSQRT_%d get Done with: %s", num, err)
-			return err
+			break LOOP
 		}
-		op, err := getSqrtByType(op)
+		op, err = t.entry.Sqrt(op)
 		if err != nil {
-			return err
+			break LOOP
 		}
 
-		fmt.Printf("\n%d: Hypotenuse is %f\n", num, op)
+		fmt.Printf("\nRESULT from %d!!! %f\n", num, op)
 	}
-	fmt.Printf("\nSQRT_%d break by closed", num)
-	return nil
-}
-
-// 6: Поставщик данных из входного канала (stdin) в парные каналы по очереди. Получает список каналов
-// Ошибки: 1 - пришло завершение контекста, 2 - ошибка канала выдачи
-func CalcInputProvider(chOuts []*dch.DChannel, len int) (int, error) {
-	var pair [2]dch.IDEntry
-
-	for j := 0; ; j++ {
-		fmt.Printf("\nКатеты через пробел:")
-		num, err := fmt.Scanf("%f %f\n", pair[0], pair[1])
-		if err != nil {
-			fmt.Printf("CalcProvider() Error into read data\n")
-			return 1, err
-		}
-		if num == 0 {
-			fmt.Printf("CalcProvider() end of data. Need stop all.\n")
-			return 0, nil
-		}
-
-		if j >= len {
-			j = 0
-		} // закольцовываем номер исходящего канала
-
-		fmt.Printf("CalcProvider() send to %d channel", j)
-		err = chOuts[j].WritePair(pair)
-		if err != nil {
-			fmt.Printf("CalcProvider() Error from %d channel is:%s\n", j, err)
-			return 2, err
-		}
-	}
-}
-
-// Можно так когда в канал лезет чё попало, т.к. тип op изменяется внутри лесенки:
-// Можно реализовать интерфейс dch.IDEntry воткнув в него 3 функции, что тут внутри лесенки для каждого типа реализации.
-// пока так..
-func getSquareByType(data dch.IDEntry) (dch.IDEntry, error) {
-	if op, ok := data.(float64); !ok {
-		if op, ok := data.(float32); !ok {
-			if op, ok := data.(int32); ok {
-				if op, ok := data.(uint32); ok {
-					if op, ok := data.(int16); ok {
-						if op, ok := data.(uint16); ok {
-							return nil, errors.New("fetSquareByType() ERROR: can't convert channel data for calculation types")
-						} else {
-							data = op * op
-						}
-					} else {
-						data = op * op
-					}
-				} else {
-					data = op * op
-				}
-			} else {
-				data = op * op
-			}
-		} else {
-			data = op * op
-		}
-	} else {
-		data = op * op
-	}
-	return data, nil
-}
-
-func getSumByType(data dch.IDEntry) (dch.IDEntry, error) {
-	if op, ok := data.(float64); !ok {
-		if op, ok := data.(float32); !ok {
-			if op, ok := data.(int32); ok {
-				if op, ok := data.(uint32); ok {
-					if op, ok := data.(int16); ok {
-						if op, ok := data.(uint16); ok {
-							return nil, errors.New("fetSquareByType() ERROR: can't convert channel data for calculation types")
-						} else {
-							data = op + op
-						}
-					} else {
-						data = op + op
-					}
-				} else {
-					data = op + op
-				}
-			} else {
-				data = op + op
-			}
-		} else {
-			data = op + op
-		}
-	} else {
-		data = op + op
-	}
-	return data, nil
-}
-
-func getSqrtByType(data dch.IDEntry) (dch.IDEntry, error) {
-	if op, ok := data.(float64); !ok {
-		if op, ok := data.(float32); !ok {
-			if op, ok := data.(int32); ok {
-				if op, ok := data.(uint32); ok {
-					if op, ok := data.(int16); ok {
-						if op, ok := data.(uint16); ok {
-							return nil, errors.New("fetSquareByType() ERROR: can't convert channel data for calculation types")
-						} else {
-							data = uint16(math.Sqrt(float64(op))) // return to own type from float64
-						}
-					} else {
-						data = int16(math.Sqrt(float64(op)))
-					}
-				} else {
-					data = uint32(math.Sqrt(float64(op)))
-				}
-			} else {
-				data = int32(math.Sqrt(float64(op)))
-			}
-		} else {
-			data = float32(math.Sqrt(float64(op)))
-		}
-	} else {
-		data = math.Sqrt(op)
-	}
-	return data, nil
+	fmt.Printf("\nSQRT_%d has error: %s", num, err)
+	return err
 }
 
 // 7: Сервис, запускающий горутины в нужном количестве:
 // Возвращает функцию снятия, канал куда слать пары и набор ошибок
-func CreateCalc(ctx context.Context, stopFunc func(), num int) *dch.DChannel {
-	fmt.Printf("\nCalcService %d starting .. ", num)
+// @param num -- количество запускаемых пакетов горутин
+func CreateCalc(ctx context.Context, stopFunc func(), strtype string, num int) {
+	fmt.Printf("\nCalcServices %d starting .. ", num)
 	var (
 		chToSquare = dch.DChannel{
-			Dch: make(chan dch.IDEntry),
+			Dch: make(chan interface{}),
 			M:   sync.Mutex{},
-			Ctx: ctx,
 		}
 		chToAdd = dch.DChannel{
-			Dch: make(chan dch.IDEntry),
+			Dch: make(chan interface{}),
 			M:   sync.Mutex{},
-			Ctx: ctx,
 		}
-		chToSum = make(chan dch.IDEntry)
+		chToSum = make(chan interface{})
 		tmp     CalcService
 	)
-	go func() {
-		err := tmp.CalcSquare(num, &chToSquare, &chToAdd)
-		if err != nil {
-			stopFunc() // по идее можно, т.к. отвал может быть из-за кривого поиска формата числа..
-			// тоже можно логировать или совать куда-то в глобальный контекст.. для наглядности:
-			fmt.Printf("\nCalcService(): Error from CalcSquare() is:\n%s", err)
-		}
-	}()
-	go func() {
-		err := tmp.CalcAdd(num, &chToAdd, &chToSum)
-		if err != nil {
-			stopFunc() // по идее можно, т.к. отвал может быть из-за кривого поиска формата числа..
-			// тоже можно логировать или совать куда-то в глобальный контекст.. для наглядности:
-			fmt.Printf("\nCalcService(): Error from CalcAdd() is:\n%s", err)
-		}
-	}()
-	go func() {
-		err := tmp.CalcSqrt(num, ctx, &chToSum)
-		if err != nil {
-			stopFunc() // по идее можно, т.к. отвал может быть из-за кривого поиска формата числа..
-			// тоже можно логировать или совать куда-то в глобальный контекст.. для наглядности:
-			fmt.Printf("\nCalcService(): Error from CalcSqrt() is:\n%s", err)
-		}
-	}()
-	return &chToSquare
-}
-
-// 8 Фабрика создает провайдера данных и заданное количество сервисов с горутинами
-func CalcFabric(countServices int) error {
-	fmt.Printf("\nCalcFabric start with %d services", countServices)
-
-	ctx, stopFunc := context.WithCancel(context.Background())
-	squareChannels := make([]*dch.DChannel, countServices)
-
-	for i := 0; i < countServices; i++ {
-		squareChannels[i] = CreateCalc(ctx, stopFunc, i)
-		fmt.Printf(".. CalcFabric(): Service %d started", i)
+	// определяем тип канального сообщения и его методы обработки:
+	switch strtype {
+	case "float64":
+		tmp.entry = new(CalcFloat64)
+	case "words":
+		tmp.entry = new(CalcWords)
 	}
+	// запуск поставщика данных из stdin, один для всего пакета горутин
 	go func() {
-		num, err := CalcInputProvider(squareChannels, countServices)
+		err := tmp.CalcGet(ctx, -1, &chToSquare)
 		stopFunc() // in any case stop all goroutines!
 
 		// Можно писать в лог файл, можно в какую-то глобальную структуру для main(), тут будет так:
-		fmt.Printf("\nCalcProvider stopped. Exit code is %d, err=%s\n", num, err)
+		fmt.Printf("\nCalcProvider stopped. Exit code is, err=%s\n", err)
 	}()
+	// запускаем нужный пакет горутин
+	for i := 0; i < num; i++ {
+		go func() {
+			err := tmp.CalcSquare(ctx, num, &chToSquare, &chToAdd)
+			if err != nil {
+				stopFunc() // по идее можно, т.к. отвал может быть из-за кривого поиска формата числа..
+				// тоже можно логировать или совать куда-то в глобальный контекст.. для наглядности:
+				fmt.Printf("\nCalcService(): Error from CalcSquare() is:\n%s", err)
+			}
+		}()
+		go func() {
+			err := tmp.CalcAdd(ctx, num, &chToAdd, &chToSum)
+			if err != nil {
+				stopFunc() // по идее можно, т.к. отвал может быть из-за кривого поиска формата числа..
+				// тоже можно логировать или совать куда-то в глобальный контекст.. для наглядности:
+				fmt.Printf("\nCalcService(): Error from CalcAdd() is:\n%s", err)
+			}
+		}()
+		go func() {
+			err := tmp.CalcSqrt(ctx, num, &chToSum)
+			if err != nil {
+				stopFunc() // по идее можно, т.к. отвал может быть из-за кривого поиска формата числа..
+				// тоже можно логировать или совать куда-то в глобальный контекст.. для наглядности:
+				fmt.Printf("\nCalcService(): Error from CalcSqrt() is:\n%s", err)
+			}
+		}()
+	}
+	return
+}
+
+// 8 Фабрика создает провайдера данных и заданное количество сервисов с горутинами
+func CalcFabric(countServices int, strtype string) error {
+	fmt.Printf("\nCalcFabric start with %d services for %s type", countServices, strtype)
+
+	ctx, stopFunc := context.WithCancel(context.Background())
+
+	CreateCalc(ctx, stopFunc, strtype, countServices)
+	fmt.Printf("\n.. CalcFabric(): Services %d started", countServices)
+
 	return nil
 }
