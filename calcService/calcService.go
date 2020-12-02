@@ -170,6 +170,36 @@ func CreateCalc(ctx context.Context, stopFunc func(), strtype string, num int) {
 	case "words":
 		tmp.entry = new(CalcWords)
 	}
+	// запускаем нужный пакет горутин
+	for i := 0; i < num; i++ {
+		go func() {
+			err := tmp.CalcSquare(ctx, i, &chToSquare, &chToAdd)
+			if err != nil {
+				stopFunc() // по идее можно, т.к. отвал может быть из-за кривого поиска формата числа..
+				// тоже можно логировать или совать куда-то в глобальный контекст.. для наглядности:
+				fmt.Printf("\nCalcService::SQUARE ended with error")
+			}
+			fmt.Printf("\nCalcService()::SQUARE: end error is:\n%s", err)
+		}()
+		go func() {
+			err := tmp.CalcAdd(ctx, i, &chToAdd, &chToSum)
+			if err != nil {
+				stopFunc() // по идее можно, т.к. отвал может быть из-за кривого поиска формата числа..
+				// тоже можно логировать или совать куда-то в глобальный контекст.. для наглядности:
+				fmt.Printf("\nCalcService::ADD ended with error")
+			}
+			fmt.Printf("\nCalcService()::ADD(): end error is:\n%s", err)
+		}()
+		go func() {
+			err := tmp.CalcSqrt(ctx, i, &chToSum)
+			if err != nil {
+				stopFunc() // по идее можно, т.к. отвал может быть из-за кривого поиска формата числа..
+				// тоже можно логировать или совать куда-то в глобальный контекст.. для наглядности:
+				fmt.Printf("\nCalcService()::SQRT: Ended with error")
+			}
+			fmt.Printf("\nCalcService()::SQRT: End error is:\n%s", err)
+		}()
+	}
 	// запуск поставщика данных из stdin, один для всего пакета горутин
 	go func() {
 		err := tmp.CalcGet(ctx, -1, &chToSquare)
@@ -178,38 +208,11 @@ func CreateCalc(ctx context.Context, stopFunc func(), strtype string, num int) {
 		// Можно писать в лог файл, можно в какую-то глобальную структуру для main(), тут будет так:
 		fmt.Printf("\nCalcProvider stopped. Exit code is, err=%s\n", err)
 	}()
-	// запускаем нужный пакет горутин
-	for i := 0; i < num; i++ {
-		go func() {
-			err := tmp.CalcSquare(ctx, num, &chToSquare, &chToAdd)
-			if err != nil {
-				stopFunc() // по идее можно, т.к. отвал может быть из-за кривого поиска формата числа..
-				// тоже можно логировать или совать куда-то в глобальный контекст.. для наглядности:
-				fmt.Printf("\nCalcService(): Error from CalcSquare() is:\n%s", err)
-			}
-		}()
-		go func() {
-			err := tmp.CalcAdd(ctx, num, &chToAdd, &chToSum)
-			if err != nil {
-				stopFunc() // по идее можно, т.к. отвал может быть из-за кривого поиска формата числа..
-				// тоже можно логировать или совать куда-то в глобальный контекст.. для наглядности:
-				fmt.Printf("\nCalcService(): Error from CalcAdd() is:\n%s", err)
-			}
-		}()
-		go func() {
-			err := tmp.CalcSqrt(ctx, num, &chToSum)
-			if err != nil {
-				stopFunc() // по идее можно, т.к. отвал может быть из-за кривого поиска формата числа..
-				// тоже можно логировать или совать куда-то в глобальный контекст.. для наглядности:
-				fmt.Printf("\nCalcService(): Error from CalcSqrt() is:\n%s", err)
-			}
-		}()
-	}
 	return
 }
 
 // 8 Фабрика создает провайдера данных и заданное количество сервисов с горутинами
-func CalcFabric(countServices int, strtype string) error {
+func CalcFabric(countServices int, strtype string) (func(), error) {
 	fmt.Printf("\nCalcFabric start with %d services for %s type", countServices, strtype)
 
 	ctx, stopFunc := context.WithCancel(context.Background())
@@ -217,5 +220,5 @@ func CalcFabric(countServices int, strtype string) error {
 	CreateCalc(ctx, stopFunc, strtype, countServices)
 	fmt.Printf("\n.. CalcFabric(): Services %d started", countServices)
 
-	return nil
+	return stopFunc, nil
 }

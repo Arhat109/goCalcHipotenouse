@@ -48,9 +48,9 @@ func main() {
 		fmt.Printf("\ncnt=%d, err=%s, num=%d", cnt, err, num)
 		fmt.Printf("\nНе, так не пойдет .. надо целое, больше нуля и желательно не шибко много.. повторная попытка")
 	}
-	err := calc.CalcFabric(num, "float64")
+	stop, err := calc.CalcFabric(num, "float64")
 	time.Sleep(20_000_000_000) // это 20сек в НАНОсекундах .. :) многозадачность КООПЕРАТИВНАЯ!
-
+	stop()
 	//	fmt.Printf("\nmain(): А у меня фсё.. ")
 	fmt.Printf("\nmain(): А у меня фсё.. err=%s", err)
 }
